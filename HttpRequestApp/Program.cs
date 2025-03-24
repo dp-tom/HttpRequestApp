@@ -33,7 +33,6 @@ namespace HttpRequestService
             private readonly ILogger<Worker> _logger;
             private readonly HttpClient _client;
             private int _interval;
-            private string _uri;
             private int _maxRetries;
             private int _retryDelaySeconds;
 
@@ -44,7 +43,7 @@ namespace HttpRequestService
                 _client = new HttpClient();
 
                 // Load configuration settings
-                _uri = _configuration["Settings:Uri"]!;
+             
                 _interval = int.Parse(_configuration["Settings:IntervalSeconds"]!); // Changed to seconds
                 _maxRetries = 3;
                 _retryDelaySeconds = 5;
@@ -70,30 +69,50 @@ namespace HttpRequestService
 
                 while (retryCount < _maxRetries && !success && !stoppingToken.IsCancellationRequested)
                 {
-                    try
+                    var ipAddresses = _configuration.GetSection("Settings:IpAddresses").Get<string[]>();
+
+                    if(ipAddresses == null || ipAddresses.Length == 0)
                     {
-                        _logger.LogInformation($"Sending POST request to {_uri}...");
+                        _logger.LogError("No IP addresses found in configuration.");
+                        return;
+                    }
 
-                        HttpResponseMessage response = await _client.PostAsync(_uri, null);
+                    foreach (var ip in ipAddresses)
+                    {
 
-                        if (response.IsSuccessStatusCode)
+                        try
                         {
-                            string responseContent = await response.Content.ReadAsStringAsync();
-                            _logger.LogInformation($"Response: {responseContent}");
-                            success = true;
+
+
+                            _logger.LogInformation($"Sending POST request to {ip}...");
+
+                            HttpResponseMessage response = await _client.PostAsync(ip, null);
+
+                            if (response.IsSuccessStatusCode)
+                            {
+                                Console.WriteLine($"✅ Success from: {ip}");
+
+                                string responseContent = await response.Content.ReadAsStringAsync();
+                                _logger.LogInformation($"Response: {responseContent}");
+                                success = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"❌ Failed from: {ip} - Status: {response.StatusCode}");
+                            }
                         }
-                    }
-                    catch (HttpRequestException httpEx)
-                    {
-                        _logger.LogError($"HTTP error: {httpEx.Message}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError($"General error: {ex.Message}");
+                        catch (HttpRequestException httpEx)
+                        {
+                            _logger.LogError($"HTTP error {ip} : {httpEx.Message}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError($"General error {ip}: {ex.Message}");
+                        }
                     }
 
                     if (!success)
-                    {
+                    {                      
                         retryCount++;
                         if (retryCount < _maxRetries)
                         {
@@ -103,6 +122,7 @@ namespace HttpRequestService
                         else
                         {
                             _logger.LogInformation("Max retry attempts reached. Skipping this cycle.");
+                            throw new Exception("🚨 None of the IP addresses responded successfully.");
                         }
                     }
                 }
