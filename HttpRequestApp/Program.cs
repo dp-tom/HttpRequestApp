@@ -56,8 +56,17 @@ namespace HttpRequestService
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    await DoWorkAsync(stoppingToken);
-                    _logger.LogInformation($"Waiting for {_interval} seconds before next attempt..."); // Updated log message
+                    try
+                    {
+                        await DoWorkAsync(stoppingToken);
+                    }
+                    catch(Exception ex)
+                    {
+                        // Only one log per hour if all retries fail
+                        _logger.LogError($"Job failed after all retries. Exception: {ex.Message}");
+                    }
+
+                    _logger.LogInformation($"Waiting for {_interval} seconds (≈ {_interval / 60} minutes) before next attempt...");
                     await Task.Delay(TimeSpan.FromSeconds(_interval), stoppingToken); // Changed to seconds
                 }
             }
