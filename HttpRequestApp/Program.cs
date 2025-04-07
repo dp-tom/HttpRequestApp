@@ -33,7 +33,6 @@ namespace HttpRequestService
             private readonly ILogger<Worker> _logger;
             private readonly HttpClient _client;
             private int _interval;
-            private int _maxRetries;
             private int _retryDelaySeconds;
 
             public Worker(IConfiguration configuration, ILogger<Worker> logger)
@@ -45,8 +44,6 @@ namespace HttpRequestService
                 // Load configuration settings
              
                 _interval = int.Parse(_configuration["Settings:IntervalSeconds"]!); // Changed to seconds
-                _maxRetries = 3;
-                _retryDelaySeconds = 5;
             }
 
             // This method is called when the service starts and should return immediately
@@ -56,19 +53,23 @@ namespace HttpRequestService
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    await DoWorkAsync(stoppingToken);
-                    _logger.LogInformation($"Waiting for {_interval} seconds before next attempt..."); // Updated log message
+                    try
+                    {
+                        await DoWorkAsync(stoppingToken);
+                    }
+                    catch(Exception ex)
+                    {
+                        // Only one log per hour if all retries fail
+                        _logger.LogError($"Job failed after all retries. Exception: {ex.Message}");
+                    }
+
+                    _logger.LogInformation($"Waiting for {_interval} seconds ( {_interval / 60} minutes) before next attempt...");
                     await Task.Delay(TimeSpan.FromSeconds(_interval), stoppingToken); // Changed to seconds
                 }
             }
 
             private async Task DoWorkAsync(CancellationToken stoppingToken)
             {
-                int retryCount = 0;
-                bool success = false;
-
-                while (retryCount < _maxRetries && !success && !stoppingToken.IsCancellationRequested)
-                {
                     var ipAddresses = _configuration.GetSection("Settings:IpAddresses").Get<string[]>();
 
                     if(ipAddresses == null || ipAddresses.Length == 0)
@@ -94,7 +95,6 @@ namespace HttpRequestService
 
                                 string responseContent = await response.Content.ReadAsStringAsync();
                                 _logger.LogInformation($"Response: {responseContent}");
-                                success = true;
                             }
                             else
                             {
@@ -110,22 +110,7 @@ namespace HttpRequestService
                             _logger.LogError($"General error {ip}: {ex.Message}");
                         }
                     }
-
-                    if (!success)
-                    {                      
-                        retryCount++;
-                        if (retryCount < _maxRetries)
-                        {
-                            _logger.LogInformation($"Retrying... Attempt {retryCount}/{_maxRetries} in {_retryDelaySeconds} seconds.");
-                            await Task.Delay(TimeSpan.FromSeconds(_retryDelaySeconds), stoppingToken);
-                        }
-                        else
-                        {
-                            _logger.LogInformation("Max retry attempts reached. Skipping this cycle.");
-                            throw new Exception("🚨 None of the IP addresses responded successfully.");
-                        }
-                    }
-                }
+                
             }
 
             public override void Dispose()
