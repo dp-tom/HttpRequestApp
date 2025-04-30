@@ -5,6 +5,8 @@ VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HttpRequestService", "HttpRequestApp\HttpRequestService.csproj", "{A0ED73DB-347B-4B1F-855A-098E01BD02C6}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "MyServiceInstaller", "MyServiceInstaller\MyServiceInstaller.vdproj", "{A414165A-3B18-4CD8-8DFD-C69AFA9E3C21}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,8 @@ Global
 		{A0ED73DB-347B-4B1F-855A-098E01BD02C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0ED73DB-347B-4B1F-855A-098E01BD02C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0ED73DB-347B-4B1F-855A-098E01BD02C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A414165A-3B18-4CD8-8DFD-C69AFA9E3C21}.Debug|Any CPU.ActiveCfg = Debug
+		{A414165A-3B18-4CD8-8DFD-C69AFA9E3C21}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
